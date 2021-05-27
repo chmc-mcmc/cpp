@@ -1,19 +1,15 @@
-//g++ quodratics2.cpp
-//g++ quodratics2.cpp -llapacke -llapack -lcblas
+//install blas, lapack
+//https://blog.csdn.net/mlnotes/article/details/9676269
+//g++ quodratics2oob.cpp -llapacke -lcblas
 #include<cmath>
-
-#define  CHAINS 50
-#define  DT0 0.000000001
-#define  decaydt 0.1
-#define decayenergy 0.1
-#define STEPS 5
-#define INTERVAL 1001
-#define DIAG false
-
 #include <time.h>
 #include <fstream>
 
+#define CHAINS 50
+#define DIAG false
 #define DIM 2
+#define EPISODE 10000
+#define BURNIN  9000
 
 const double rho = 0.9999999;
 double U(double* q)
@@ -42,34 +38,33 @@ bool outbnd(double* q){
   return false;
 }
 
-const int BURNIN =  9000;
-const int EPISODE = 10000;
-double QS[(EPISODE-BURNIN)*CHAINS][DIM];
-int idx=0;
-void gen(double* q)
-{
-  QS[idx][0]=q[0];
-  QS[idx][1]=q[1];
-  idx++;
-}
-
-#include "Sampler2.h"
+#include "Sampler3.h"
 
 int main()
 {
   clock_t start, end;
   double cpu_time_used;
   start = clock();
+  HMC hmc(true, true
+          , NULL);
+  double QS[EPISODE-BURNIN][CHAINS][DIM];
+  for(int i=0;i<EPISODE;i++){
+    for(int j=0;j<CHAINS;j++){
+      double *q=hmc.sample();
+      if(i>=BURNIN)
+        memcpy(QS[i-BURNIN][j],q,DIM*sizeof(double));
+    }
+  }
 
-  hmc(true, true, NULL);
   end = clock();
   cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
   printf("%f seconds",cpu_time_used);
   std::ofstream csv("./QS.csv");
-  for(int i=0;i<(EPISODE-BURNIN)*CHAINS;i++){
-    csv<< QS[i][0] << "," << QS[i][1] << std::endl;
+  for(int i=0;i<EPISODE-BURNIN;i++){
+    for(int j=0;j<CHAINS;j++){
+      csv<< QS[i][j][0] << "," << QS[i][j][1] << std::endl;
+    }
   }
   csv.close();
   return 0;
 }
-
